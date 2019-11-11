@@ -22,7 +22,7 @@ def score(scoreMet, i, j):
     return scoreMet[i][j]
 
 
-def global_align(row, col, gap, seq1, seq2, scoreMet):
+def global_align(col, row, gap, seq2, seq1, scoreMet):
     values = np.zeros((row, col), dtype=int)
     pointers = np.zeros((row, col), dtype=int)
     # init the matrix
@@ -35,10 +35,9 @@ def global_align(row, col, gap, seq1, seq2, scoreMet):
     pointers[0][0] = 0
     for i in range(1, row):
         for j in range(1, col):
-            scr = score(scoreMet, seq1[i-1], seq2[j-1])
-            d = values[i-1][j-1] + scr
-            h = values[i-1][j] + scr
-            v = values[i][j-1] + scr
+            d = values[i-1][j-1] + score(scoreMet, seq1[i-1], seq2[j-1])
+            h = values[i-1][j] + score(scoreMet, "-", seq2[j-1])
+            v = values[i][j-1] + score(scoreMet, seq1[i-1], "-")
             arr = np.array([v, h, d])
             pointers[i][j] = np.argmax(arr) + 1
             values[i][j] = np.max(arr)
