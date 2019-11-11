@@ -3,6 +3,8 @@ import numpy as np
 import pandas as pd
 from itertools import groupby
 
+GAP = "-"
+
 
 def fastaread(fasta_name):
     f = open(fasta_name)
@@ -18,69 +20,83 @@ def read_score(file):
     return score
 
 
-def score(scoreMet, i, j):
-    return scoreMet[i][j]
+def score(score_matrix, i, j):
+    return score_matrix[i][j]
 
 
-def global_align(col, row, gap, seq2, seq1, scoreMet):
+def global_align(col, row, seq2, seq1, score_matrix):
     values = np.zeros((row, col), dtype=int)
     pointers = np.zeros((row, col), dtype=int)
-    # init the matrix
-    for i in range(row):
-        values[i][0] = score(scoreMet, seq1[i-1], "-") * i
-        pointers[i][0] = 1
-    for j in range(col):
-        values[0][j] = score(scoreMet, "-", seq2[j-1]) * j
-        pointers[0][j] = 2
-    pointers[0][0] = 0
+    init(col, pointers, row, score_matrix, seq1, seq2, values)
+    build_matrix(col, pointers, row, score_matrix, seq1, seq2, values)
+    eli1, eli2 = traceback(col, pointers, row, seq1, seq2)
+
+    printall(eli1, eli2, pointers, values)
+
+
+def build_matrix(col, pointers, row, score_matrix, seq1, seq2, values):
     for i in range(1, row):
         for j in range(1, col):
-            d = values[i-1][j-1] + score(scoreMet, seq1[i-1], seq2[j-1])
-            h = values[i-1][j] + score(scoreMet, "-", seq2[j-1])
-            v = values[i][j-1] + score(scoreMet, seq1[i-1], "-")
+            d = values[i - 1][j - 1] + score(score_matrix, seq1[i - 1], seq2[j - 1])
+            h = values[i - 1][j] + score(score_matrix, GAP, seq2[j - 1])
+            v = values[i][j - 1] + score(score_matrix, seq1[i - 1], GAP)
             arr = np.array([v, h, d])
             pointers[i][j] = np.argmax(arr) + 1
             values[i][j] = np.max(arr)
-    eli1 = []
-    eli2 = []
-    i = row -1
-    j = col -1
-    p = pointers[i][j]
-    while p != 0:
-        if p == 1:
-            eli1.append("-")
-            eli2.append(seq2[j-1])
-            j -= 1
-            p = pointers[i][j]
-        elif p == 2:
-            eli1.append(seq1[i-1])
-            eli2.append("-")
-            i -= 1
-            p = pointers[i][j]
-        elif p == 3:
-            eli1.append(seq1[i-1])
-            eli2.append(seq2[j-1])
-            i -= 1
-            j -= 1
-            p = pointers[i][j]
 
+
+def init(col, pointers, row, score_matrix, seq1, seq2, values):
+    for i in range(row):
+        values[i][0] = score(score_matrix, seq1[i - 1], GAP) * i
+        pointers[i][0] = 1
+    for j in range(col):
+        values[0][j] = score(score_matrix, GAP, seq2[j - 1]) * j
+        pointers[0][j] = 2
+    pointers[0][0] = 0
+
+
+def printall(eli1, eli2, pointers, values):
     print("val : ")
     print(values)
     print("pointers: ")
     print(pointers)
     print("eli1 :")
     for i in range(len(eli1)):
-        print(eli1[len(eli1) - i -1], end=" ")
+        print(eli1[len(eli1) - i - 1], end=" ")
     print("eli2 :")
     for i in range(len(eli2)):
-        print(eli2[len(eli2) - i -1], end=" ")
+        print(eli2[len(eli2) - i - 1], end=" ")
 
 
+def traceback(col, pointers, row, seq1, seq2):
+    eli1 = []
+    eli2 = []
+    i = row - 1
+    j = col - 1
+    p = pointers[i][j]
+    while p != 0:
+        if p == 1:
+            eli1.append(GAP)
+            eli2.append(seq2[j - 1])
+            j -= 1
+            p = pointers[i][j]
+        elif p == 2:
+            eli1.append(seq1[i - 1])
+            eli2.append(GAP)
+            i -= 1
+            p = pointers[i][j]
+        elif p == 3:
+            eli1.append(seq1[i - 1])
+            eli2.append(seq2[j - 1])
+            i -= 1
+            j -= 1
+            p = pointers[i][j]
+    return eli1, eli2
 
 
 def main():
     score = read_score("score_matrix.tsv")
-    global_align(4, 5, -2, "AGC", "AAAC", score)
+    global_align(4, 5, "AGC", "AAAC", score)
 # parser = argparse.ArgumentParser()
     # parser.add_argument('seq_a', help='Path to first FASTA file (e.g. fastas/HomoSapiens-SHH.fasta)')
     # parser.add_argument('seq_b', help='Path to second FASTA file')
