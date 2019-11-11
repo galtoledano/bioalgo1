@@ -27,10 +27,10 @@ def global_align(col, row, gap, seq2, seq1, scoreMet):
     pointers = np.zeros((row, col), dtype=int)
     # init the matrix
     for i in range(row):
-        values[i][0] = gap * i
+        values[i][0] = score(scoreMet, seq1[i-1], "-") * i
         pointers[i][0] = 1
     for j in range(col):
-        values[0][j] = gap * j
+        values[0][j] = score(scoreMet, "-", seq2[j-1]) * j
         pointers[0][j] = 2
     pointers[0][0] = 0
     for i in range(1, row):
@@ -46,20 +46,20 @@ def global_align(col, row, gap, seq2, seq1, scoreMet):
     p = pointers[row-1][col-1]
     i = row -1
     j = col -1
-    # while p != 0:
-    #     if p == 1:
-    #         eli1.append(seq1[j])
-    #         eli2.append("-")
-    #         j -= 1
-    #     elif p == 2:
-    #         eli1.append("-")
-    #         eli2.append(seq2[i])
-    #         i -= 1
-    #     elif p == 3:
-    #         eli1.append(seq1[j])
-    #         eli2.append(seq2[i])
-    #         i -= 1
-    #         j -= 1
+    while p != 0:
+        if p == 1:
+            eli1.append(seq1[j])
+            eli2.append("-")
+            j -= 1
+        elif p == 2:
+            eli1.append("-")
+            eli2.append(seq2[i])
+            i -= 1
+        elif p == 3:
+            eli1.append(seq1[j])
+            eli2.append(seq2[i])
+            i -= 1
+            j -= 1
 
     print("val : ")
     print(values)
