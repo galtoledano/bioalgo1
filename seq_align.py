@@ -43,34 +43,37 @@ def global_align(col, row, gap, seq2, seq1, scoreMet):
             values[i][j] = np.max(arr)
     eli1 = []
     eli2 = []
-    p = pointers[row-1][col-1]
     i = row -1
     j = col -1
+    p = pointers[i][j]
     while p != 0:
         if p == 1:
-            eli1.append(seq1[j])
-            eli2.append("-")
-            j -= 1
-        elif p == 2:
             eli1.append("-")
-            eli2.append(seq2[i])
+            eli2.append(seq2[j-1])
+            j -= 1
+            p = pointers[i][j]
+        elif p == 2:
+            eli1.append(seq1[i-1])
+            eli2.append("-")
             i -= 1
+            p = pointers[i][j]
         elif p == 3:
-            eli1.append(seq1[j])
-            eli2.append(seq2[i])
+            eli1.append(seq1[i-1])
+            eli2.append(seq2[j-1])
             i -= 1
             j -= 1
+            p = pointers[i][j]
 
     print("val : ")
     print(values)
     print("pointers: ")
     print(pointers)
-    # print("eli1 :")
-    # for i in range(len(eli1)):
-    #     print(eli1[len(eli1) - i -1], end=" ")
-    # print("eli2 :")
-    # for i in range(len(eli2)):
-    #     print(eli2[len(eli2) - i -1], end=" ")
+    print("eli1 :")
+    for i in range(len(eli1)):
+        print(eli1[len(eli1) - i -1], end=" ")
+    print("eli2 :")
+    for i in range(len(eli2)):
+        print(eli2[len(eli2) - i -1], end=" ")
 
 
 
