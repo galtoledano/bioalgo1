@@ -16,39 +16,82 @@ def fastaread(fasta_name):
 
 
 def read_score(file):
+    """reading the score table and process it to pandas matrix"""
     score = pd.read_csv(file, sep='\t', index_col=0)
     return score
 
 
 def score(score_matrix, i, j):
+    """
+    gets two letters, returning it's score
+    :param score_matrix:  the matrix with all scores
+    :param i: the first letter
+    :param j: the second letter
+    :return: the score of i, j.
+    """
     return score_matrix[i][j]
 
 
 def align(col, row, seq2, seq1, score_matrix, globaling=True):
+    """
+    Calculates the optimal sequence alignment according to the selected alignment type
+    :param col: the numbers of letters at the first sequence
+    :param row: the numbers of letters at the second sequence
+    :param seq2: the second sequence
+    :param seq1: the first sequence
+    :param score_matrix: the matrix with all scores
+    :param globaling: Decides the type of alignment. If true- global, if false- local
+    :return:
+    """
+    #  init the matrixes
     values = np.zeros((row, col), dtype=int)
     pointers = np.zeros((row, col), dtype=int)
     if globaling:
         init(col, pointers, row, score_matrix, seq1, seq2, values)
     build_matrix(col, pointers, row, score_matrix, seq1, seq2, values, globaling)
-    print(values)
+    # print(values)
     eli1, eli2 = traceback(col, pointers,values, row, seq1, seq2, globaling)
-    printall(eli1, eli2, pointers, values)
+    # printall(eli1, eli2, pointers, values)
 
 
 def build_matrix(col, pointers, row, score_matrix, seq1, seq2, values, globaling):
+    """
+    building the matrix according the formula
+    :param col: the numbers of letters at the first sequence
+    :param pointers: the pointer's matrix
+    :param row: the numbers of letters at the second sequence
+    :param score_matrix: the matrix with all scores
+    :param seq1: the first sequence
+    :param seq2: the second sequence
+    :param values: the value's matrix
+    :param globaling: Decides the type of alignment. If true- global, if false- local
+    :return:
+    """
     for i in range(1, row):
         for j in range(1, col):
-            d = values[i - 1][j - 1] + score(score_matrix, seq1[i - 1], seq2[j - 1])
-            h = values[i - 1][j] + score(score_matrix, GAP, seq2[j - 1])
-            v = values[i][j - 1] + score(score_matrix, seq1[i - 1], GAP)
+            d = values[i - 1][j - 1] + score(score_matrix, seq1[i - 1], seq2[j - 1])  #diagonal
+            h = values[i - 1][j] + score(score_matrix, GAP, seq2[j - 1])  #horizontal
+            v = values[i][j - 1] + score(score_matrix, seq1[i - 1], GAP)  #vertical
             arr = np.array([v, h, d])
             if not globaling:
-                arr = np.append(arr, 0)
+                arr = np.append(arr, 0)  #at local alignment, also can be 0
             pointers[i][j] = np.argmax(arr) + 1
             values[i][j] = np.max(arr)
 
 
 def init(col, pointers, row, score_matrix, seq1, seq2, values):
+    """
+    Initializes two arrays. the first array used to hold formula results values. The second array is to save pointers
+    for trace back the sequence.
+    :param col: the numbers of letters at the first sequence
+    :param pointers: the pointer's matrix
+    :param row: the numbers of letters at the second sequence
+    :param score_matrix: the matrix with all scores
+    :param seq1: the first sequence
+    :param seq2: the second sequence
+    :param values: the value's matrix
+    :return:
+    """
     for i in range(row):
         values[i][0] = score(score_matrix, seq1[i - 1], GAP) * i
         pointers[i][0] = 1
@@ -59,6 +102,7 @@ def init(col, pointers, row, score_matrix, seq1, seq2, values):
 
 
 def printall(eli1, eli2, pointers, values):
+    """ for our use, prints all matrix and values"""
     print("val : ")
     print(values)
     print("pointers: ")
@@ -72,11 +116,24 @@ def printall(eli1, eli2, pointers, values):
 
 
 def traceback(col, pointers,values, row, seq1, seq2, glob):
-    eli1 = []
-    eli2 = []
+    """
+    trace back according to the pointers matrix and getting the best scored sequence
+
+    :param col: the numbers of letters at the first sequence
+    :param pointers: the pointer's matrix
+    :param values: the value's matrix
+    :param row: the numbers of letters at the second sequence
+    :param seq1: the first sequence
+    :param seq2: the second sequence
+    :param glob: Decides the type of alignment. If true- global, if false- local
+    :return: the two final alignments
+    """
+    align1 = []
+    align2 = []
     i = row - 1
     j = col - 1
     if not glob:
+        # option to have an sub sequence
         vals = np.array(values)
         res = np.where(vals == np.amax(vals))
         res = np.array(res)
@@ -85,22 +142,22 @@ def traceback(col, pointers,values, row, seq1, seq2, glob):
     p = pointers[i][j]
     while p != 0:
         if p == 1:
-            eli1.append(GAP)
-            eli2.append(seq2[j - 1])
+            align1.append(GAP)
+            align2.append(seq2[j - 1])
             j -= 1
             p = pointers[i][j]
         elif p == 2:
-            eli1.append(seq1[i - 1])
-            eli2.append(GAP)
+            align1.append(seq1[i - 1])
+            align2.append(GAP)
             i -= 1
             p = pointers[i][j]
         elif p == 3:
-            eli1.append(seq1[i - 1])
-            eli2.append(seq2[j - 1])
+            align1.append(seq1[i - 1])
+            align2.append(seq2[j - 1])
             i -= 1
             j -= 1
             p = pointers[i][j]
-    return eli1, eli2
+    return align1, align2
 
 
 
