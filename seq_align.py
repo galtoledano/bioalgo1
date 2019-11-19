@@ -6,6 +6,17 @@ GAP = "-"
 
 CONVERT_BASE_TO_INT = {'A': 0, 'C': 1, 'G': 2, 'T': 3, '-': 4}
 
+CONVERT_INT_TO_BASE = {0: 'A', 1: 'C', 2: 'G', 3: 'T', 4: '-'}
+
+
+
+def convert_base_to_int(seq1, seq2, d):
+    keys, choices = list(zip(*d.items()))
+    seq_a = np.array(keys)[:, None, None] == seq1
+    seq_b = np.array(keys)[:, None, None] == seq2
+    seq_1 = np.select(seq_a, choices)[0]
+    seq_2 = np.select(seq_b, choices)[0]
+    return seq_1, seq_2
 
 def fastaread(fasta_name):
     f = open(fasta_name)
@@ -52,53 +63,29 @@ def align(col, row, seq2, seq1, score_matrix, globaling, overlap):
     pointers = np.zeros((row, col), dtype=int)
     if globaling:
         init(col, pointers, row, score_matrix, seq1, seq2, values, overlap)
+    seq1, seq2 = convert_base_to_int(seq1, seq2, CONVERT_BASE_TO_INT)
     build_matrix(col, pointers, row, score_matrix, seq1, seq2, values, globaling, overlap)
     # print(values)
+    seq1, seq2 = convert_base_to_int(seq1, seq2, CONVERT_INT_TO_BASE)
     eli1, eli2, s = traceback(col, pointers,values, row, seq1, seq2, globaling, overlap)
     printall(eli1, eli2, pointers, values)
     return s
 
 
-def build_matrix(col, pointers, row, score_matrix, seq1, seq2, values, globaling, overlap):
-    """
-    building the matrix according the formula
-    :param col: the numbers of letters at the first sequence
-    :param pointers: the pointer's matrix
-    :param row: the numbers of letters at the second sequence
-    :param score_matrix: the matrix with all scores
-    :param seq1: the first sequence
-    :param seq2: the second sequence
-    :param values: the value's matrix
-    :param globaling: Decides the type of alignment. If true- global, if false- local
-    :param overlap: Decides the type of alignment. If true- overlap.
-    :return:
-    """
+def build_matrix(col, pointers, row, score_matrix, seq1, seq2, values, glob, overlap):
     for i in range(1, row):
-        # d_row = values[i-1]
-        # v_row = values[i-1]
+        upper_line = values[i-1]
+        v = np.add(upper_line[1:], score_matrix[seq2, CONVERT_BASE_TO_INT[GAP]])
+        h = np.zeros(col)
+        d = np.add(upper_line[:col-1], score_matrix[seq1[i-1], seq2])
+        h[0] = values[i][0] + score_matrix[CONVERT_BASE_TO_INT[GAP], seq1[i - 1]]
         for j in range(1, col):
-            if overlap and i == 0:
-                d = values[i - 1][j - 1]
-                h = values[i][j - 1]
-                v = values[i - 1][j]
-            else:
-                d = values[i - 1][j - 1] + score_matrix[CONVERT_BASE_TO_INT[seq1[i-1]]][CONVERT_BASE_TO_INT[seq2[j-1]]]
-                # score(score_matrix, CONVERT_BASE_TO_INT[seq1[i - 1]],
-                #                                  CONVERT_BASE_TO_INT[seq2[j - 1]], i, overlap)  #diagonal
-                h = values[i][j - 1] + score_matrix[CONVERT_BASE_TO_INT[GAP]][CONVERT_BASE_TO_INT[seq2[j-1]]]
-                    # score(score_matrix, CONVERT_BASE_TO_INT[GAP], CONVERT_BASE_TO_INT[seq2[j - 1]],
-                    #                          i, overlap)  #horizontal
-                v = values[i - 1][j] + score_matrix[CONVERT_BASE_TO_INT[seq1[i-1]]][CONVERT_BASE_TO_INT[GAP]]
-                    # score(score_matrix, CONVERT_BASE_TO_INT[seq1[i - 1]], CONVERT_BASE_TO_INT[GAP],
-                    #                          i, overlap)  #vertical
-                # arr = np.array([v, h, d])
-            arr = [v, h, d]
-            if not globaling:
+            arr = [v[j-1], h[j-1], d[j-1]]
+            if not glob:
                 arr.append(0)
             values[i][j] = max(arr)
+            h[j] = values[i][j] + score_matrix[CONVERT_BASE_TO_INT[GAP], seq1[i-1]]
             pointers[i][j] = arr.index(max(arr)) + 1
-
-
 
 
 
@@ -167,8 +154,8 @@ def traceback(col, pointers,values, row, seq1, seq2, glob, overlap):
     :param glob: Decides the type of alignment. If true- global, if false- local
     :return: the two final alignments
     """
-    align1 = np.array([])
-    align2 = np.array([])
+    align1 = []
+    align2 = []
     i = row - 1
     j = col - 1
     if not glob:
@@ -196,18 +183,18 @@ def traceback(col, pointers,values, row, seq1, seq2, glob, overlap):
         if not glob and not overlap and p == 4:
             break
         if int(p) == 1:
-            np.append(align1, GAP)
-            np.append(align2, seq1[i - 1])
+            align1.append(GAP)
+            align2.append(seq1[i - 1])
             i -= 1
             p = pointers[i][j]
         elif int(p) == 2:
-            np.append(align1, seq2[j - 1])
-            np.append(align2, GAP)
+            align1.append(seq2[j - 1])
+            align2.append(GAP)
             j -= 1
             p = pointers[i][j]
         elif int(p) == 3:
-            np.append(align1, seq2[j - 1])
-            np.append(align2, seq1[i - 1])
+            align1.append(seq2[j - 1])
+            align2.append(seq1[i - 1])
             i -= 1
             j -= 1
             p = pointers[i][j]
