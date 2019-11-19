@@ -7,7 +7,7 @@ FILES = ["fastas/HelicoverpaArmigera-cMyc.fasta", "fastas/HomoSapiens-SHH.fasta"
          "fastas/LarimichthysCrocea-cMyc.fasta", "fastas/RatusNorvegicus-SHH.fasta"]
 
 ALIGN_TYPE = ["global", "local", "overlap"]
-NUMBER_OF_RUNS = 10
+NUMBER_OF_RUNS = 1
 
 if __name__ == '__main__':
     s = sys.argv

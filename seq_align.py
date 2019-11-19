@@ -1,6 +1,7 @@
 import argparse
 import numpy as np
 from itertools import groupby
+import time as t
 GAP = "-"
 
 CONVERT_BASE_TO_INT = {'A': 0, 'C': 1, 'G': 2, 'T': 3, '-': 4}
@@ -73,19 +74,30 @@ def build_matrix(col, pointers, row, score_matrix, seq1, seq2, values, globaling
     :return:
     """
     for i in range(1, row):
-        print(i)
+        # d_row = values[i-1]
+        # v_row = values[i-1]
         for j in range(1, col):
-            d = values[i - 1][j - 1] + score(score_matrix, CONVERT_BASE_TO_INT[seq1[i - 1]],
-                                             CONVERT_BASE_TO_INT[seq2[j - 1]], i, overlap)  #diagonal
-            h = values[i][j - 1] + score(score_matrix, CONVERT_BASE_TO_INT[GAP], CONVERT_BASE_TO_INT[seq2[j - 1]],
-                                         i, overlap)  #horizontal
-            v = values[i - 1][j] + score(score_matrix, CONVERT_BASE_TO_INT[seq1[i - 1]], CONVERT_BASE_TO_INT[GAP],
-                                         i, overlap)  #vertical
-            arr = np.array([v, h, d])
+            if overlap and i == 0:
+                d = values[i - 1][j - 1]
+                h = values[i][j - 1]
+                v = values[i - 1][j]
+            else:
+                d = values[i - 1][j - 1] + score_matrix[CONVERT_BASE_TO_INT[seq1[i-1]]][CONVERT_BASE_TO_INT[seq2[j-1]]]
+                # score(score_matrix, CONVERT_BASE_TO_INT[seq1[i - 1]],
+                #                                  CONVERT_BASE_TO_INT[seq2[j - 1]], i, overlap)  #diagonal
+                h = values[i][j - 1] + score_matrix[CONVERT_BASE_TO_INT[GAP]][CONVERT_BASE_TO_INT[seq2[j-1]]]
+                    # score(score_matrix, CONVERT_BASE_TO_INT[GAP], CONVERT_BASE_TO_INT[seq2[j - 1]],
+                    #                          i, overlap)  #horizontal
+                v = values[i - 1][j] + score_matrix[CONVERT_BASE_TO_INT[seq1[i-1]]][CONVERT_BASE_TO_INT[GAP]]
+                    # score(score_matrix, CONVERT_BASE_TO_INT[seq1[i - 1]], CONVERT_BASE_TO_INT[GAP],
+                    #                          i, overlap)  #vertical
+                # arr = np.array([v, h, d])
+            arr = [v, h, d]
             if not globaling:
-                arr = np.append(arr, 0)  #at local alignment, also can be 0
-            pointers[i][j] = np.argmax(arr) + 1
-            values[i][j] = np.max(arr)
+                arr.append(0)
+            values[i][j] = max(arr)
+            pointers[i][j] = arr.index(max(arr)) + 1
+
 
 
 
@@ -104,11 +116,13 @@ def init(col, pointers, row, score_matrix, seq1, seq2, values, overlap):
     :return:
     """
     for i in range(row):
-        pointers[i][0] = 1
         values[i][0] = score(score_matrix, CONVERT_BASE_TO_INT[seq1[i - 1]], CONVERT_BASE_TO_INT[GAP], i, overlap) * i
+        # pointers[i][0] = 1
     for j in range(col):
         values[0][j] = score(score_matrix, CONVERT_BASE_TO_INT[GAP], CONVERT_BASE_TO_INT[seq2[j - 1]], 0, overlap) * j
-        pointers[0][j] = 2
+        # pointers[0][j] = 2
+    pointers[:, 1:] = 2
+    pointers[1:, :] = 1
     pointers[0][0] = 0
 
 
@@ -153,21 +167,21 @@ def traceback(col, pointers,values, row, seq1, seq2, glob, overlap):
     :param glob: Decides the type of alignment. If true- global, if false- local
     :return: the two final alignments
     """
-    align1 = []
-    align2 = []
+    align1 = np.array([])
+    align2 = np.array([])
     i = row - 1
     j = col - 1
     if not glob:
         # option to have an sub sequence
-        vals = np.array(values)
-        res = np.where(vals == np.amax(vals))
+        # vals = np.array(values)
+        res = np.where(values == np.amax(values))
         res = np.array(res)
         i = res[0][0]
         j = res[1][0]
         print(pointers)
     if overlap:
-        vals = np.array(values)
-        res = np.where(vals == np.amax(vals[i]))
+        # vals = np.array(values)
+        res = np.where(values == np.amax(values[i]))
         res = np.array(res)
         j = res[1][0]
     p = pointers[i][j]
@@ -179,21 +193,21 @@ def traceback(col, pointers,values, row, seq1, seq2, glob, overlap):
         temp = list(seq2)
         align1 = temp[j:col-1][::-1]
     while p != 0:
-        if not glob and not overlap and p == 4 :
+        if not glob and not overlap and p == 4:
             break
         if int(p) == 1:
-            align1.append(GAP)
-            align2.append(seq1[i - 1])
+            np.append(align1, GAP)
+            np.append(align2, seq1[i - 1])
             i -= 1
             p = pointers[i][j]
         elif int(p) == 2:
-            align1.append(seq2[j - 1])
-            align2.append(GAP)
+            np.append(align1, seq2[j - 1])
+            np.append(align2, GAP)
             j -= 1
             p = pointers[i][j]
         elif int(p) == 3:
-            align1.append(seq2[j - 1])
-            align2.append(seq1[i - 1])
+            np.append(align1, seq2[j - 1])
+            np.append(align2, seq1[i - 1])
             i -= 1
             j -= 1
             p = pointers[i][j]
@@ -214,16 +228,20 @@ def main():
     command_args = parser.parse_args()
     seq_a = np.array(list(fastaread(command_args.seq_a).__next__()[1]))
     seq_b = np.array(list(fastaread(command_args.seq_b).__next__()[1]))
-    score = read_score(command_args.score) #todo
+    score = np.array((read_score(command_args.score))) #todo
+    len_a = len(seq_a) + 1
+    len_b = len(seq_b) + 1
     if command_args.align_type == 'global':
-        s = align(len(seq_a) + 1, len(seq_b) + 1, seq_a, seq_b, score, True, False)
+        s = align(len_a, len_b, seq_a, seq_b, score, True, False)
     elif command_args.align_type == 'local':
-        s = align(len(seq_a) +1, len(seq_b) + 1, seq_a, seq_b, score, False, False)
+        s = align(len_a, len_b, seq_a, seq_b, score, False, False)
     elif command_args.align_type == 'overlap':
-        s = align(len(seq_a) +1, len(seq_b) + 1, seq_a, seq_b, score, True, True)
+        s = align(len_a, len_b, seq_a, seq_b, score, True, True)
     # print the best alignment and score
     print(command_args.align_type + " : " + str(s))
 
 
 if __name__ == '__main__':
+    start_time = t.time()
     main()
+    print("--- %s seconds ---" % (t.time() - start_time))
