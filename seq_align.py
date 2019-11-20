@@ -162,7 +162,7 @@ def print_all(eli1, eli2):
         print("")
 
 
-def traceback(col, pointers, values, row, seq1, seq2, glob, overlap):  # todo : split function
+def traceback(col, pointers, values, row, seq1, seq2, glob, overlap):
     """
     trace back according to the pointers matrix and getting the best scored sequence
 
@@ -269,7 +269,7 @@ def main():
     command_args = parser.parse_args()
     seq_a = np.array(list(fastaread(command_args.seq_a).__next__()[1]))
     seq_b = np.array(list(fastaread(command_args.seq_b).__next__()[1]))
-    score = np.array((read_score(command_args.score))) #todo
+    score = np.array((read_score(command_args.score)))
     len_a = len(seq_a) + 1
     len_b = len(seq_b) + 1
 
