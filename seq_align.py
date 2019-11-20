@@ -1,15 +1,27 @@
+#########################################importiong#########################################
 import argparse
 import numpy as np
 from itertools import groupby
-import time as t
+
+##################################### consts ################################################
+
 GAP = "-"
 
 CONVERT_BASE_TO_INT = {'A': 0, 'C': 1, 'G': 2, 'T': 3, '-': 4}
 
 CONVERT_INT_TO_BASE = {0: 'A', 1: 'C', 2: 'G', 3: 'T', 4: '-'}
 
+####################################### functions ############################################
 
-def convert_base_to_int(seq1, seq2, d):
+
+def convert(seq1, seq2, d):
+    """
+    converting by dictionary dna to numbers and  numbers to dna
+    :param seq1: the first alignment
+    :param seq2: the second alignment
+    :param d: the dictionary
+    :return: the converted alignments
+    """
     keys, choices = list(zip(*d.items()))
     seq_a = np.array(keys)[:, None, None] == seq1
     seq_b = np.array(keys)[:, None, None] == seq2
@@ -29,24 +41,10 @@ def fastaread(fasta_name):
 
 def read_score(file):
     """reading the score table and process it to pandas matrix"""
-    # score = pd.read_csv(file, sep='\t', index_col=0)
     return np.genfromtxt(file, delimiter='\t', skip_header=1, usecols=range(1, 6))
 
-#
-# def score(score_matrix, i, j, ind_i, overlap):
-#     """
-#     gets two letters, returning it's score
-#     :param score_matrix:  the matrix with all scores
-#     :param i: the first letter
-#     :param j: the second letter
-#     :return: the score of i, j.
-#     """
-#     if overlap and (ind_i == 0):
-#         return 0
-#     return score_matrix[i][j]
 
-
-def align(col, row, seq2, seq1, score_matrix, globaling, overlap):
+def align(col, row, seq2, seq1, score_matrix, glob, overlap):
     """
     Calculates the optimal sequence alignment according to the selected alignment type
     :param col: the numbers of letters at the first sequence
@@ -54,37 +52,62 @@ def align(col, row, seq2, seq1, score_matrix, globaling, overlap):
     :param seq2: the second sequence
     :param seq1: the first sequence
     :param score_matrix: the matrix with all scores
-    :param globaling: Decides the type of alignment. If true- global, if false- local
+    :param glob: Decides the type of alignment. If true- global, if false- local
     :param overlap: Decides the type of alignment. If true- overlaping
-    :return:
+    :return: the final score
     """
-    #  init the matrixes
+    #  initialize the values and pointers matrixs
     values = np.zeros((row, col), dtype=int)
     pointers = np.zeros((row, col), dtype=int)
-    seq1, seq2 = convert_base_to_int(seq1, seq2, CONVERT_BASE_TO_INT)
-    if globaling:
+    #  converting the dna bases to numbers
+    seq1, seq2 = convert(seq1, seq2, CONVERT_BASE_TO_INT)
+    if glob:
+        # initialize the matrixs if the type is not global.
         init(col, pointers, row, score_matrix, seq1, seq2, values, overlap)
-    build_matrix(col, pointers, row, score_matrix, seq1, seq2, values, globaling, overlap)
-    # print(values)
-    seq1, seq2 = convert_base_to_int(seq1, seq2, CONVERT_INT_TO_BASE)
-    eli1, eli2, s = traceback(col, pointers,values, row, seq1, seq2, globaling, overlap)
-    printall(eli1, eli2, pointers, values)
+    #  filling the values matrix
+    build_matrix(col, pointers, row, score_matrix, seq1, seq2, values, glob, overlap)
+    #  converting the number to  dna bases
+    seq1, seq2 = convert(seq1, seq2, CONVERT_INT_TO_BASE)
+    #  trace back the best alignment
+    eli1, eli2, s = traceback(col, pointers, values, row, seq1, seq2, glob, overlap)
+    #  prints the alignments
+    print_all(eli1, eli2)
     return s
 
 
 def build_matrix(col, pointers, row, score_matrix, seq1, seq2, values, glob, overlap):
+    """
+    filling the matrix with the best-fit values.
+    :param col: the numbers of letters at the first sequence
+    :param pointers: the pointer's matrix
+    :param row: the numbers of letters at the second sequence
+    :param score_matrix: the scores for each match
+    :param seq1: the first sequence
+    :param seq2: the second sequence
+    :param values: the value's matrix
+    :param glob: Decides the type of alignment. If true- global or overlap, if false- local
+    :param overlap: Decides the type of alignment. If true-overlap, if false- global or local
+    """
     for i in range(1, row):
+        #  splicing the latest full row
         upper_line = values[i-1]
+        #  vertical values
         v = np.add(upper_line[1:], score_matrix[seq2, CONVERT_BASE_TO_INT[GAP]])
+        #  horizontal values
         h = np.zeros(col)
         if overlap and (i == row - 1):
+            #  promise no "cost"
             h[0] = values[i][0]
         else:
             h[0] = values[i][0] + score_matrix[CONVERT_BASE_TO_INT[GAP], seq1[i - 1]]
+        #  diagonal values
         d = np.add(upper_line[:col-1], score_matrix[seq1[i-1], seq2])
+
+        # choosing the best of three options
         for j in range(1, col):
             arr = [v[j-1], h[j-1], d[j-1]]
             if not glob:
+                #  adding option on 0
                 arr.append(0)
             values[i][j] = max(arr)
             if overlap and (i == row-1):
@@ -92,7 +115,6 @@ def build_matrix(col, pointers, row, score_matrix, seq1, seq2, values, glob, ove
             else:
                 h[j] = values[i][j] + score_matrix[CONVERT_BASE_TO_INT[GAP], seq1[i-1]]
             pointers[i][j] = arr.index(max(arr)) + 1
-
 
 
 def init(col, pointers, row, score_matrix, seq1, seq2, values, overlap):
@@ -106,51 +128,41 @@ def init(col, pointers, row, score_matrix, seq1, seq2, values, overlap):
     :param seq1: the first sequence
     :param seq2: the second sequence
     :param values: the value's matrix
-    :return:
+    :param overlap: Decides the type of alignment. If true-overlap, if false- global or local
     """
+    #  initialize the first column if it's not overlap match.
     if not overlap:
         for i in range(1, row):
             values[i][0] = score_matrix[CONVERT_BASE_TO_INT[GAP], seq1[i-1]] * i
     for j in range(1, col):
         values[0][j] = score_matrix[CONVERT_BASE_TO_INT[GAP], seq2[j-1]] * j
-        # if overlap:
-            # values[1:, :] = 0 #init the first col to be 0. means no cost to gap.
-            # values[:, col-1:] = 0
+    #  initialize the first pointers row and column
     pointers[:, 1:] = 2
     pointers[1:, :] = 1
     pointers[0][0] = 0
 
 
-
-def printall(eli1, eli2, pointers, values):
+def print_all(eli1, eli2):
     """
     prints the final alignments
     :param eli1:  the first alignment
     :param eli2: the second alignment
-    :return:
     """
     eli1 = eli1[::-1]
     eli2 = eli2[::-1]
-    # print("val : ")
-    # print(values)
-    # print("pointers: ")
-    # print(pointers)
-    # print("eli1 :")
-    counter = 0
     while len(eli1) > 50:
         print(''.join(eli1[:50]))
-        eli1 = eli1[50:]
         print(''.join(eli2[:50]))
-        eli2 = eli2[50:]
         print("")
-        counter += 1
+        eli1 = eli1[50:]
+        eli2 = eli2[50:]
     if len(eli1) >= 1:
         print(''.join(eli1))
         print(''.join(eli2))
         print("")
 
 
-def traceback(col, pointers, values, row, seq1, seq2, glob, overlap):
+def traceback(col, pointers, values, row, seq1, seq2, glob, overlap):  # todo : split function
     """
     trace back according to the pointers matrix and getting the best scored sequence
 
@@ -160,34 +172,31 @@ def traceback(col, pointers, values, row, seq1, seq2, glob, overlap):
     :param row: the numbers of letters at the second sequence
     :param seq1: the first sequence
     :param seq2: the second sequence
-    :param glob: Decides the type of alignment. If true- global, if false- local
-    :return: the two final alignments
+    :param glob: Decides the type of alignment. If true- global or overlap, if false- local
+    :param overlap: Decides the type of alignment. If true-overlap, if false- global or local
+    :return: the two final alignments and score
     """
-    align1 = []
-    align2 = []
-    i = row - 1
-    j = col - 1
-    if not glob:
-        # option to have an sub sequence
-        # vals = np.array(values)
-        res = np.where(values == np.amax(values))
-        res = np.array(res)
-        i = res[0][0]
-        j = res[1][0]
-    if overlap:
-        # vals = np.array(values)
-        x = max(values[i])
-        res = np.where(values[i] == x)
-        res = np.array(res)
-        j = res[0][0]  # the second [0] is ok ?
-    p = pointers[i][j]
-    s = values[i][j]
-    # print("pointers:")
-    # print(pointers)
-    if (overlap) and (j < col - 1):
-        align2 = [GAP] * (col - j - 1)
-        # temp = list(seq2)
-        align1 = list(seq2[j:col-1][::-1])
+    #  init the aligns and indexes
+    align1, align2, i, j, p, s = init_traceing(col, glob, overlap, pointers, row, seq2, values)
+    #  the trace back
+    tracing(align1, align2, glob, i, j, overlap, p, pointers, seq1, seq2)
+    return align1, align2, s
+
+
+def tracing(align1, align2, glob, i, j, overlap, p, pointers, seq1, seq2):
+    """
+    do the tracing
+    :param align1: first alignment
+    :param align2: second alignment
+    :param glob: flag if the type is global or not
+    :param i: the i index
+    :param j: the j index
+    :param overlap: flag if the type is overlap  or not
+    :param p: the position at the pointers matrix
+    :param pointers: the pointers matrix
+    :param seq1: the first seq
+    :param seq2: the second seq
+    """
     while p != 0:
         if not glob and not overlap and p == 4:
             break
@@ -207,26 +216,64 @@ def traceback(col, pointers, values, row, seq1, seq2, glob, overlap):
             i -= 1
             j -= 1
             p = pointers[i][j]
-    return align1, align2, s
 
+
+def init_traceing(col, glob, overlap, pointers, row, seq2, values):
+    """
+    initilize the trace back lists and indexes
+    :param col: number od columns
+    :param glob: flag if the type is global or not
+    :param overlap: flag if the type is overlap or not
+    :param pointers: the pointers matrix
+    :param row: numbers of rows
+    :param seq2: the second seq
+    :param values: the values matrix
+    :return: both initilized aligns,  i, j - the first traceback index p - first pointer at the pointers matrix,
+    s - the final score
+    """
+    align1 = []
+    align2 = []
+    i = row - 1
+    j = col - 1
+    if not glob:
+        # option to have an sub sequence
+        res = np.where(values == np.amax(values))
+        res = np.array(res)
+        i = res[0][0]
+        j = res[1][0]
+    if overlap:
+        x = max(values[i])
+        res = np.where(values[i] == x)
+        res = np.array(res)
+        j = res[0][0]
+    p = pointers[i][j]
+    s = values[i][j]
+    #  init the gaps before the first match
+    if overlap and (j < col - 1):
+        align2 = [GAP] * (col - j - 1)
+        align1 = list(seq2[j:col - 1][::-1])
+    return align1, align2, i, j, p, s
 
 
 def main():
+    """
+    the main function. parsing the progrem's arguments and running the match-algorithm to them.
+    :print: the function prints the best match alignments, the matching type and the score
+    """
+    #  parsing
     parser = argparse.ArgumentParser()
-    seq_a = parser.add_argument('seq_a', help='Path to first FASTA file (e.g. fastas/HomoSapiens-SHH.fasta)')
-    seq_b = parser.add_argument('seq_b', help='Path to second FASTA file')
+    parser.add_argument('seq_a', help='Path to first FASTA file (e.g. fastas/HomoSapiens-SHH.fasta)')
+    parser.add_argument('seq_b', help='Path to second FASTA file')
     parser.add_argument('--align_type', help='Alignment type (e.g. local)', required=True)
     parser.add_argument('--score', help='Score matrix in.tsv format (default is score_matrix.tsv) ', default='score_matrix.tsv')
-    # align(4, 5, "AGC", "AAAC", score, True, False)  # to remember, len +1
-    # align(5, 6, "AAGA", "TTAAG", score, False, False)  # to remember, len +1
-
     command_args = parser.parse_args()
     seq_a = np.array(list(fastaread(command_args.seq_a).__next__()[1]))
     seq_b = np.array(list(fastaread(command_args.seq_b).__next__()[1]))
     score = np.array((read_score(command_args.score))) #todo
-    # align(8, 4, "AAAGCCG", "CCG", score, True, True)  # to remember, len +1
     len_a = len(seq_a) + 1
     len_b = len(seq_b) + 1
+
+    #  running the match- algorithm.
     if command_args.align_type == 'global':
         s = align(len_a, len_b, seq_a, seq_b, score, True, False)
     elif command_args.align_type == 'local':
@@ -238,8 +285,6 @@ def main():
     print(command_args.align_type + " : " + str(s))
 
 
-
 if __name__ == '__main__':
-    start_time = t.time()
     main()
-    print("--- %s seconds ---" % (t.time() - start_time))
+
