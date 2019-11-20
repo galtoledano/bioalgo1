@@ -177,7 +177,7 @@ def traceback(col, pointers, values, row, seq1, seq2, glob, overlap):
     :return: the two final alignments and score
     """
     #  init the aligns and indexes
-    align1, align2, i, j, p, s = init_traceing(col, glob, overlap, pointers, row, seq2, values)
+    align1, align2, i, j, p, s = init_trace(col, glob, overlap, pointers, row, seq2, values)
     #  the trace back
     tracing(align1, align2, glob, i, j, overlap, p, pointers, seq1, seq2)
     return align1, align2, s
@@ -218,7 +218,7 @@ def tracing(align1, align2, glob, i, j, overlap, p, pointers, seq1, seq2):
             p = pointers[i][j]
 
 
-def init_traceing(col, glob, overlap, pointers, row, seq2, values):
+def init_trace(col, glob, overlap, pointers, row, seq2, values):
     """
     initilize the trace back lists and indexes
     :param col: number od columns
