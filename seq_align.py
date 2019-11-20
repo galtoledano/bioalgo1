@@ -9,7 +9,6 @@ CONVERT_BASE_TO_INT = {'A': 0, 'C': 1, 'G': 2, 'T': 3, '-': 4}
 CONVERT_INT_TO_BASE = {0: 'A', 1: 'C', 2: 'G', 3: 'T', 4: '-'}
 
 
-
 def convert_base_to_int(seq1, seq2, d):
     keys, choices = list(zip(*d.items()))
     seq_a = np.array(keys)[:, None, None] == seq1
@@ -17,6 +16,7 @@ def convert_base_to_int(seq1, seq2, d):
     seq_1 = np.select(seq_a, choices)[0]
     seq_2 = np.select(seq_b, choices)[0]
     return seq_1, seq_2
+
 
 def fastaread(fasta_name):
     f = open(fasta_name)
@@ -179,15 +179,15 @@ def traceback(col, pointers, values, row, seq1, seq2, glob, overlap):
         x = max(values[i])
         res = np.where(values[i] == x)
         res = np.array(res)
-        j = res[0]
+        j = res[0][0]  # the second [0] is ok ?
     p = pointers[i][j]
     s = values[i][j]
     # print("pointers:")
     # print(pointers)
-    if overlap and (j < col - 1):
+    if (overlap) and (j < col - 1):
         align2 = [GAP] * (col - j - 1)
         # temp = list(seq2)
-        align1 = seq2[j:col-1][::-1]
+        align1 = list(seq2[j:col-1][::-1])
     while p != 0:
         if not glob and not overlap and p == 4:
             break
@@ -233,11 +233,9 @@ def main():
         s = align(len_a, len_b, seq_a, seq_b, score, False, False)
     elif command_args.align_type == 'overlap':
         s = align(len_b, len_a, seq_b, seq_a, score, True, True)
+
     # print the best alignment and score
-    if command_args.align_type == 'overlap':
-        print(command_args.align_type + " : " + str(s[0]))
-    else:
-        print(command_args.align_type + " : " + str(s))
+    print(command_args.align_type + " : " + str(s))
 
 
 
