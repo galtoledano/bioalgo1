@@ -9,7 +9,6 @@ CONVERT_BASE_TO_INT = {'A': 0, 'C': 1, 'G': 2, 'T': 3, '-': 4}
 CONVERT_INT_TO_BASE = {0: 'A', 1: 'C', 2: 'G', 3: 'T', 4: '-'}
 
 
-
 def convert_base_to_int(seq1, seq2, d):
     keys, choices = list(zip(*d.items()))
     seq_a = np.array(keys)[:, None, None] == seq1
@@ -17,6 +16,7 @@ def convert_base_to_int(seq1, seq2, d):
     seq_1 = np.select(seq_a, choices)[0]
     seq_2 = np.select(seq_b, choices)[0]
     return seq_1, seq_2
+
 
 def fastaread(fasta_name):
     f = open(fasta_name)
@@ -94,7 +94,6 @@ def build_matrix(col, pointers, row, score_matrix, seq1, seq2, values, glob, ove
             pointers[i][j] = arr.index(max(arr)) + 1
 
 
-
 def init(col, pointers, row, score_matrix, seq1, seq2, values, overlap):
     """
     Initializes two arrays. the first array used to hold formula results values. The second array is to save pointers
@@ -119,7 +118,6 @@ def init(col, pointers, row, score_matrix, seq1, seq2, values, overlap):
     pointers[:, 1:] = 2
     pointers[1:, :] = 1
     pointers[0][0] = 0
-
 
 
 def printall(eli1, eli2, pointers, values):
@@ -163,8 +161,8 @@ def traceback(col, pointers, values, row, seq1, seq2, glob, overlap):
     :param glob: Decides the type of alignment. If true- global, if false- local
     :return: the two final alignments
     """
-    align1 = []
-    align2 = []
+    align1 = list()
+    align2 = list()
     i = row - 1
     j = col - 1
     if not glob:
@@ -179,7 +177,7 @@ def traceback(col, pointers, values, row, seq1, seq2, glob, overlap):
         x = max(values[i])
         res = np.where(values[i] == x)
         res = np.array(res)
-        j = res[0]
+        j = int(res[0][0]) #todo check with other input
     p = pointers[i][j]
     s = values[i][j]
     # print("pointers:")
@@ -197,12 +195,12 @@ def traceback(col, pointers, values, row, seq1, seq2, glob, overlap):
             i -= 1
             p = pointers[i][j]
         elif int(p) == 2:
-            align1.append(seq2[j - 1][0])
+            align1.append(str(seq2[j - 1][0]))
             align2.append(GAP)
             j -= 1
             p = pointers[i][j]
         elif int(p) == 3:
-            align1.append(seq2[j - 1][0])
+            align1.append(str(seq2[j - 1][0]))
             align2.append(seq1[i - 1])
             i -= 1
             j -= 1
