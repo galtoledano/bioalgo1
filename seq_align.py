@@ -63,7 +63,7 @@ def align(col, row, seq2, seq1, score_matrix, glob, overlap):
     seq1, seq2 = convert(seq1, seq2, CONVERT_BASE_TO_INT)
     if glob:
         # initialize the matrixs if the type is not global.
-        init(col, pointers, row, score_matrix, seq1, seq2, values, overlap)
+        pointers, values = init(col, pointers, row, score_matrix, seq1, seq2, values, overlap)
     #  filling the values matrix
     build_matrix(col, pointers, row, score_matrix, seq1, seq2, values, glob, overlap)
     #  converting the number to  dna bases
@@ -101,7 +101,7 @@ def build_matrix(col, pointers, row, score_matrix, seq1, seq2, values, glob, ove
         else:
             h[0] = values[i][0] + score_matrix[CONVERT_BASE_TO_INT[GAP], seq1[i - 1]]
         #  diagonal values
-        d = np.add(upper_line[:col-1], score_matrix[seq1[i-1], seq2])
+        d = np.add(upper_line[: col-1], score_matrix[seq1[i-1], seq2])
 
         # choosing the best of three options
         for j in range(1, col):
@@ -133,13 +133,14 @@ def init(col, pointers, row, score_matrix, seq1, seq2, values, overlap):
     #  initialize the first column if it's not overlap match.
     if not overlap:
         for i in range(1, row):
-            values[i][0] = score_matrix[CONVERT_BASE_TO_INT[GAP], seq1[i-1]] * i
+            values[i][0] = score_matrix[CONVERT_BASE_TO_INT[GAP], seq1[i-1]] + values[i-1][0]
     for j in range(1, col):
-        values[0][j] = score_matrix[CONVERT_BASE_TO_INT[GAP], seq2[j-1]] * j
+        values[0][j] = score_matrix[CONVERT_BASE_TO_INT[GAP], seq2[j-1]] + values[0][j-1]
     #  initialize the first pointers row and column
     pointers[:, 1:] = 2
     pointers[1:, :] = 1
     pointers[0][0] = 0
+    return pointers, values
 
 
 def print_all(eli1, eli2):
