@@ -113,7 +113,9 @@ def build_matrix(col, pointers, row, score_matrix, seq1, seq2, values, glob, ove
             if overlap and (i == row-1):
                 h[j] = values[i][j]
             else:
-                h[j] = values[i][j] + score_matrix[CONVERT_BASE_TO_INT[GAP], seq2[j-1]]
+                if j < col - 1:
+                    h[j] =  values[i][j] + \
+                            score_matrix[CONVERT_BASE_TO_INT[GAP], seq2[j]]
             pointers[i][j] = arr.index(max(arr)) + 1
 
 
@@ -284,7 +286,7 @@ def main():
 
     # print the best alignment and score
     print(command_args.align_type + " : " + str(s))
-    return s #todo:delete
+
 
 
 if __name__ == '__main__':
